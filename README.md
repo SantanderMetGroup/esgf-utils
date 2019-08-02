@@ -2,10 +2,13 @@
 
 ## CMIP6 search, inventory and download
 
-Local index generation
+Generate a local index using `index.sh`
 
-1. Generate a local index using `index.sh`
-1. To clean the index, use `< $INDEX jq --slurp 'map(map_values([.]|flatten|first))'`
+CSV from index
+
+```bash
+< $INDEX jq -r --slurp 'map(map_values([.]|flatten|first)) | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] |@csv'
+```
 
 Inventory
 
