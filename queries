@@ -1,0 +1,8 @@
+# agregacion
+jq --slurp 'map(. + { dataset_id: (.master_id|split(".")|del(.[7])|join(".")),master_id})    | group_by(.dataset_id)       | map(   reduce .[] as $item ({variables: []}; {dataset_id: $item.dataset_id, variables: (.variables + $item.variable)}  )   )' < index-latest-noreplica > agg-latest-noreplica
+
+# csv
+jq -r 'map({dataset_id, variables: .variables|join(" ")})  |   (map(keys) | add | unique) as $cols   |     map(. as $row | $cols | map($row[.])) as $rows  |   $cols, $rows[]  |@csv' < agg-latest-noreplica > csv
+
+# suma del size, está hecho así porque lo hice a partir del csv sin el size (el que sale del anterior comando) pero lo suyo es hacerlo en el propio jq
+grep -w pr inventario.csv | grep -w tas | awk -F "," 'BEGIN{sum=0}/r1i1p1f1/ && (/pr/ || /tas/ || /sftlf/) && /mon/{sum=sum+$2}END{print sum/1000000000}'
