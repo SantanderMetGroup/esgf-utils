@@ -1,0 +1,30 @@
+package:
+  name: synda-transfer
+  version: "3.9"
+
+source:
+  git_url: https://github.com/Prodiguer/synda
+  git_rev: sdt/3.9
+  folder: synda
+
+requirements:
+  build:
+    - python=2
+    - git
+  run:
+    - python=2
+    - pyOpenSSL
+    - psutil 
+    - humanize 
+    - tabulate 
+    - progress 
+    - python-jsonrpc 
+    - python-daemon
+    - retrying 
+    - requests 
+    - beautifulsoup4 
+    - texttable 
+    - pillow
+    - reportlab 
+    - myproxyclient==2.1.0
+    - pycountry
