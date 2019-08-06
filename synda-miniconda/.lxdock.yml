@@ -1,0 +1,13 @@
+name: synda
+
+containers:
+  - name: centos
+    image: centos/6
+
+  - name: test
+    image: centos/6
+
+provisioning:
+  - type: ansible
+    playbook: provision.yml
+    lxd_transport: True

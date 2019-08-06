@@ -1,0 +1,9 @@
+export ST_HOME={{ miniconda_prefix }}/envs/{{ miniconda_env.name }}
+openid='https://esgf-data.dkrz.de/esgf-idp/openid/NAME'
+passwd='PASSWORD'
+
+sed -i 's|openid=.*|openid=$openid|' $ST_HOME/conf/credentials.conf
+sed -i 's|password=.*|password=$passwd|' $ST_HOME/conf/credentials.conf
+echo "ST_HOME=$ST_HOME"
+echo "OPENID=$openid"
+

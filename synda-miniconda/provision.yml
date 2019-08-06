@@ -1,0 +1,46 @@
+- name: Provision container to perform a synda installation inside a miniconda environment
+  hosts: all
+  tasks:
+    - name: Add synda user to the wheel group
+      user: name=synda groups=wheel append=yes
+
+    - name: Install Base packages
+      yum: name="@Base" state=present
+
+    - name: Install packages
+      yum: name={{ item }} state=present
+      with_items: [vim, git, sudo]
+
+    - name: Allow user from wheel group to sudo without password
+      lineinfile: path="/etc/sudoers" line="%wheel ALL=(ALL) NOPASSWD:ALL"
+
+- name: Install Miniconda for user synda
+  hosts: all
+  become: yes
+  become_user: synda
+  become_method: su	# sudo does not work with conda
+  roles:
+    - role: uchida.miniconda
+      vars:
+        miniconda_python: 3
+        miniconda_version: 4.5.12
+        miniconda_prefix: /home/synda/miniconda3
+        miniconda_env:
+          name: synda
+          dependencies:
+            - python=2
+  tasks:
+    - copy: src=recipe dest=/home/synda		# use bind mount to accelerate development
+
+    - name: Activate conda when using bash
+      lineinfile: path=/home/synda/.bashrc line=". /home/synda/miniconda3/etc/profile.d/conda.sh"
+
+    - name: Install conda build in base environment
+      command: '{{ miniconda_prefix }}/bin/conda install conda-build -y'
+
+    - name: Add conda-forge to channel list
+      command: '{{ miniconda_prefix }}/bin/conda config --add channels conda-forge'
+
+#    - name: Copy util script
+#      template: src=syndainit.sh.j2 dest="{{ ansible_env.HOME }}/syndainit.sh" mode=775
+
