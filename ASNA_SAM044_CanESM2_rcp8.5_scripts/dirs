@@ -1,0 +1,6 @@
+BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
+SCRIPTDIR=${BASEDIR}/scripts
+POSTDIR="${BASEDIR}/post_data/post_fullres"
+POST2DIR="${BASEDIR}/post_data/post_CORDEX"
+FIGSDIR=$(pwd)/figs
+
