@@ -8,7 +8,6 @@
 
 import os
 import sys
-import tqdm
 from netCDF4 import Dataset
 
 path = '/home/javi/oceano/gmeteo/DATA/ESGF/UNICAN-NODE/DATASETS/\
@@ -22,7 +21,7 @@ for r, d, f in os.walk(path):
             files.append(os.path.join(r, file))
 
 
-for file in tqdm.tqdm(files):
+for file in files:
     root_grp = Dataset(file)
     frequency=root_grp.frequency
     
@@ -33,7 +32,7 @@ for file in tqdm.tqdm(files):
     global_att['Conventions'] = root_grp.Conventions ;
     global_att['title'] = root_grp.title ;
     global_att['contact'] = root_grp.contact ;
-    global_att['experiment'] = "rcp85" ;
+    global_att['experiment'] = root_grp.experiment ;
     global_att['experiment_id'] = "rcp85" ;
     global_att['driving_experiment'] = "CCCma-CanESM2,rcp85,r1i1p1" ;
     global_att['driving_experiment_name'] = "rcp85" ;
