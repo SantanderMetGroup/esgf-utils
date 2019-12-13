@@ -1,0 +1,238 @@
+#! /bin/bash -x 
+module load netcdf_tools
+
+function usage(){
+  cat << End_of_help
+    Usage: swpp_shifttime [options]
+
+    --input, i
+      Input files and (optionally) number of files to skip and maximum
+      number of files to process.
+      This flag can appear as many times as necessary to include all
+      the files to be processed:
+
+      -i '/path/to/files/filename_??????_var.nc':12:24
+      
+      Path expansion by the shell must be protected by using single
+      quotes: '
+
+    --dry-run, -n
+      Just show the files that would be processed and exit
+
+    --help, -h
+      Print this help message
+End_of_help
+}
+
+#####################################################################
+#
+#  Option parser
+#
+#  Try to get the configuration from the environment and the command
+#  line.
+#
+#####################################################################
+tmpdirbase=${SWPP_TEMPORARY_STORAGE}
+xnjtable=${SWPP_WRFNCXNJ_TABLE}
+xnjgattr=${SWPP_WRFNCXNJ_GATTR}
+attributes=${SWPP_NETCDF_ATTRIBUTES}
+
+input=""
+is_dry=0
+shifttime="0"
+leftbnd="0"
+rightbnd="0"
+create_lonlat="1"
+cellmethod=""
+fx="1"
+comment=""
+while test -n "$1"; do
+  case "$1" in
+    --left-bound|-l) leftbnd=$2; shift ;;
+    --right-bound|-r) rightbnd="$2"; shift ;;
+    --shift-time|-s) shifttime="$2"; shift ;;
+    --variables|-v) vars="$2"; shift ;;
+    --cell-method|-c) cellmethod=$2; shift ;;
+    --temporary-storage|-t) tmpdirbase=$2; shift ;;
+    --input|-i) input="${input},$2"; shift ;;
+    --dry-run|-n) is_dry=1 ;;
+    --help|-h) usage; exit ;;
+    *) echo "Unknown option: $1"; exit ;;
+  esac
+  shift
+done
+
+
+#####################################################################
+#
+#  Functions
+#
+#####################################################################
+
+function print_config(){
+  # Prints the configuration options taken from the environment
+  # or command line
+  cat << End_of_conf
+  SWPP_TEMPORARY_STORAGE (--temporary-storage)
+    ${tmpdirbase}
+  --input
+    ${input} 
+End_of_conf
+}
+
+function ipcc_varname() {
+  var=$1
+  table=$2
+  cat ${table} | awk  '{FS="[ \t]*;[ \t]*"; OFS=";"}; $1 == "'${var}'" {print $2}'
+}
+
+function var_longname() {
+  var=$1
+  table=$2
+  cat ${table} | awk  '{FS="[ \t]*;[ \t]*"; OFS=";"}; $1 == "'${var}'" {print $3}'
+}
+
+function var_stdname() {
+  var=$1
+  table=$2
+  cat ${table} | awk  '{FS="[ \t]*;[ \t]*"; OFS=";"}; $1 == "'${var}'" {print $4}'
+}
+
+function ncatted_global_att() {
+  cat ${xnjgattr} | while read a val; do echo "-a ${a},global,o,c,$val "; done
+}
+
+
+#####################################################################
+#
+#  Main program
+#
+#####################################################################
+
+scriptdir=$( (cd `dirname $0` && echo $PWD) )
+thisdir=$(pwd)
+#
+#  Get a private space to run
+#
+if test -n "${tmpdirbase}"; then
+  tmpdir=${tmpdirbase}/tmpdir.`date +%Y%m%d%H%M%S%n`
+else
+  tmpdir=${thisdir}/tmpdir.`date +%Y%m%d%H%M%S%n`
+fi
+mkdir -p ${tmpdir} && cd ${tmpdir} || exit
+
+print_config
+#
+#   Get file list
+#
+rm -f cache.filelist
+for ifiles_skipfiles_maxfiles in ${input//,/ }; do
+  read ifiles skipfiles maxfiles <<< ${ifiles_skipfiles_maxfiles//:/ }
+  if test -n "${skipfiles}"; then
+    eval \ls ${ifiles} | awk 'NR>'${skipfiles}' ' | head -n ${maxfiles} >> cache.filelist
+  else
+    eval \ls ${ifiles} >> cache.filelist
+  fi
+done
+
+#
+#   Creating attributes from templates
+#
+ncgen -o attributes.nc < ${attributes} # --> attributes.nc
+(
+  echo "netcdf gattr {"
+  cat ${xnjgattr} | while read key val; do echo "  :${key} = ${val} ;"; done
+  echo "}"
+) | ncgen -o gattr.nc      # --> gattr.nc
+
+#
+#   Main loop
+#
+cat cache.filelist | while read ncfile; do
+  if ncdump -h ${ncfile} | grep -q SWPP_SHIFTTIME; then
+    echo "${ncfile} was already processed by swpp_shifttime !!"
+    echo "Unexpected results may occur by a second processing! I'm not touching this file."
+    continue
+  fi  
+
+#Modifying attributes in variables
+ for xnjvar in ${vars//,/ }; do
+    var=$(ipcc_varname $xnjvar $xnjtable)
+    echo "Using '${var}'"
+
+    #ncatted -h -a cell_methods,${var},o,c,"${cellmethod}" \
+    #ncatted -h -a missing_value,${var},o,f,1.e+20 ${ncfile}
+    #ncatted -h -a grid_mapping,${var},o,c,"rotated_pole" ${ncfile}
+    #ncatted -h -a _FillValue,${var},o,f,1.e+20 ${ncfile}
+    #ncatted -h -a long_name,${var},o,c,"$(var_longname $xnjvar $xnjtable)" ${ncfile}
+    #ncatted -h -a standard_name,${var},o,c,"$(var_stdname $xnjvar $xnjtable)" ${ncfile}
+    #ncrename -h -d x,rloncoord ${ncfile}
+    #ncrename -h -d y,rlatcoord ${ncfile}
+
+    ncatted -h -a cell_methods,${var},d,, ${ncfile}
+    ncatted -h -a cell_methods,${var},o,c,"${cellmethod}" \
+    ncatted -h -a missing_value,${var},o,f,1.e+20 ${ncfile}
+    ncatted -h -a _FillValue,${var},o,f,1.e+20 ${ncfile}
+    ncatted -h -a grid_mapping,${var},o,c,"rotated_pole" ${ncfile}
+    ncks -h -A attributes.nc ${ncfile}
+    ncks -h -A gattr.nc ${ncfile}
+    ncatted -h -a long_name,${var},o,c,"$(var_longname $xnjvar $xnjtable)" ${ncfile}
+    ncatted -h -a standard_name,${var},o,c,"$(var_stdname $xnjvar $xnjtable)" ${ncfile}
+    ncatted -h -a _CoordinateAxisType,lon,d,, -a _CoordinateAxisType,lat,d,, ${ncfile}
+
+# Added by Josipa summer 2019, renaming the cordinate names
+    ncrename -h -d x,rloncoord ${ncfile}
+    ncrename -h -d y,rlatcoord ${ncfile}
+
+
+#Rotated Coordinates
+     echo "${ncfile} doesn't have coordinate rlon, I'm going to create it"
+     ncks -h -A -a -v rlon -h ${scriptdir}/rlon_file.nc ${ncfile}
+     ncatted -h -a long_name,rlon,o,c,"longitude in rotated pole grid" -a units,rlon,o,c,"degrees" -a standard_name,rlon,o,c,"grid_longitude" -a axis,rlon,o,c,"X" ${ncfile}
+     ncap2 -h -s "lon=lon/1.0" ${ncfile} s1 # --> Tricky!! To change from float to double
+     mv s1 ${ncfile}
+     echo "${ncfile} doesn't have coordinate rlat, I'm going to create it"
+     ncks -h -A -a -v rlat -h ${scriptdir}/rlat_file.nc ${ncfile}
+     ncatted -h -a long_name,rlat,o,c,"latitude in rotated pole grid" -a units,rlat,o,c,"degrees" -a standard_name,rlat,o,c,"grid_latitude" -a axis,rlat,o,c,"Y" ${ncfile}
+     ncap2 -h -s "lat=lat/1.0" ${ncfile} s2 # --> Tricky!! To change from float to double
+     mv s2 ${ncfile}
+     ncrename -h -d rloncoord,rlon ${ncfile}
+     ncrename -h -d rlatcoord,rlat ${ncfile}
+ 
+#Modifing attributes depending on the type of variables
+     ncks -h -C -O -x -v time ${ncfile} ${ncfile}_tmp
+     ncwa -h -a time ${ncfile}_tmp ${ncfile}_tmp2
+     mv ${ncfile}_tmp2 ${ncfile}
+     rm ${ncfile}_tmp          
+
+     ncrename -h -d rloncoord,rlon ${ncfile}
+     ncrename -h -d rlatcoord,rlat ${ncfile}
+     ncatted -h -a grid_mapping,${var},o,c,"rotated_pole" ${ncfile}
+     ncatted -h -a cell_methods,${var},d,, ${ncfile}
+     ncatted -h -a cell_methods,${var},o,c,"${cellmethod}" ${ncfile}
+     ncatted -h -a ,global,d,, ${ncfile}     # Borro todos los atributos globales
+     #ncatted -h -a history,global,d,, ${ncfile}     # Borro history de los atributos globales
+     ncatted -h -a SWPP_SHIFTTIME,global,o,c,"shift: ${shifttime}, left: ${leftbnd}, right: ${rightbnd}" ${ncfile}
+     ncatted -h -a creation_date,global,a,c,"`date +%Y-%m-%d-T%H:%M:%SZ`" ${ncfile}
+     ncks -h -A  gattr.nc ${ncfile}
+#############################################################################################################
+# Added by Josipa 11.12.2019, adding tracking number to global attributes
+     ncatted -h -a tracking_id,global,o,c,"`uuidgen -r`" ${ncfile}
+
+#############################################################################################################
+     nccopy -k 4 -d 4 -s ${ncfile} ${ncfile}.post # --> Para comprimir los archivos y que ocupen menos espacio
+
+#############################################################################################################
+# Added by Josipa 11.12.2019, unlimited time to defined numebr of timesteps
+     nccopy -u ${ncfile}.post ${ncfile}
+     rm ${ncfile}.post
+#############################################################################################################
+     #mv ${ncfile}.post ${ncfile}  
+
+
+  done # var
+done # ncfile
+
+
+
+

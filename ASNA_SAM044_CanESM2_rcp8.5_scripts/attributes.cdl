@@ -1,0 +1,8 @@
+netcdf attributes {
+dimensions:
+variables:
+	char rotated_pole ;
+		rotated_pole:grid_mapping_name = "rotated_latitude_longitude" ;
+		rotated_pole:grid_north_pole_latitude = 70.6 ;
+		rotated_pole:grid_north_pole_longitude = -56.06 ;
+}
