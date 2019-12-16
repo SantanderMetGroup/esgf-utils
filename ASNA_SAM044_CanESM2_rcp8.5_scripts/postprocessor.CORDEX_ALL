@@ -1,0 +1,21 @@
+#! /bin/bash
+#
+# Sample postprocessor
+#
+# This can be any kind of executable accepting one argument:
+#
+wrfnc_file=$1        # The WRF file to postprocess
+#
+# and creating a postprocessed file with the same name to be uploaded by register_file
+#
+variables='U,V,W,T2,Q2,PSFC,U10,V10,SINALPHA,COSALPHA,QVAPOR,QCLOUD,QICE,RH,VIM,CLT,QFX,GLW,SWDOWN,RAINC,RAINNC,HGT,SMOIS,PH,PHB,GHT,T,TT,PRES,MSLP,ALBEDO,ACLWDNB,ACSWDNB,SST,TSK,GRDFLX,SFROFF,OLR,ACLWDNT,ACSWDNT,ACSWUPT,ACLWUPT,CLDFRA,LH,ACLHF,HFX,ACHFX,ACSWUPB,ACLWUPB,EMISS,TSLB,SH2O,UDROFF,SNOW,SNOWH,PBLH,LANDMASK,LU_INDEX,UST,SNOWNC,XICEM,VIQC,VIQI,SFCEVP,POTEVP,ACSNOM,CLH,CLM,CLL,I_RAINC,I_RAINNC,I_ACSWUPT,I_ACSWDNT,I_ACSWUPB,I_ACSWDNB,I_ACLWUPT,I_ACLWDNT,I_ACLWUPB,I_ACLWDNB,P,PB,XLAT,XLONG,Times'
+levels='1000.0,975.,950.,925.,900.,875.,850.0,700.,600.,500.,400.,300.,200.'
+
+module load py_interp 
+
+py_interp.py -i ${wrfnc_file} --verbose -v ${variables} -p ${levels}
+
+xptdsize=$( echo "print int($(stat -c %s ${wrfnc_file})*0.025)" | python )
+if test "$(stat -c %s ${wrfnc_file}_PLEV)" -ge ${xptdsize}; then
+  mv "${wrfnc_file}_PLEV" "${wrfnc_file}" 
+fi
