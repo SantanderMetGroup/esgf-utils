@@ -304,32 +304,32 @@ FIGSDIR=$(pwd)/figs
 ###########################################################################
 
 per1y="2002-2002,2003-2003,2004-2004,2005-2005,2006-2006,2007-2007,2008-2008,2009-2009,2010-2010"
-per5y="2071-2075,2076-2080,2081-2085,2086-2090" #"2006-2010,2011-2015,2016-2020,2021-2025,2026-2030,2031-2035,2036-2040,2041-2045,2046-2050" 
-per10y="2002-2010,2011-2020,2021-2030,2031-2040,2041-2050" 
-#2051-2055,2056-2060,2061-2065,2066-2070,2071-2075,2076-2080,2081-2085,2086-2090,2091-2095,2096-2100"
-#2051-2060,2061-2070,2071-2080,2081-2090,2091-2100"
+per5y="2006-2010,2011-2015,2016-2020,2021-2025,2026-2030,2031-2035,2036-2040,2041-2045,2046-2050,2051-2055,2056-2060,2061-2065,2066-2070,2071-2075,2076-2080,2081-2085,2086-2090,2091-2095,2096-2100" 
+per10y="2002-2010,2011-2020,2021-2030,2031-2040,2041-2050,2051-2060,2061-2070,2071-2080,2081-2090,2091-2100" 
 
-bname="SAM-44_CCCma-CanESM2_rcp8.5_r1i1p1_UCAN-WRF341I_v2"
+bname="SAM-44_CCCma-CanESM2_rcp85_r1i1p1_UCAN-WRF341I_v2"
 
 cat << eof > swpp_ave_files
-  #${in_path}/CanESM2_rcp85-default-20020101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20060101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20100101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20140101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20180101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20220101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20260101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20300101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20340101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20380101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20420101T000000/*/*_@var@.nc:12:60
-  #${in_path}/CanESM2_rcp85-default-20460101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20020101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20060101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20100101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20140101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20180101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20220101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20260101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20300101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20340101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20380101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20420101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20460101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20700101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20740101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20780101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20820101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20860101T000000/*/*_@var@.nc:12:60
   ${in_path}/CanESM2_rcp85-default-20900101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20940101T000000/*/*_@var@.nc:12:60
+  ${in_path}/CanESM2_rcp85-default-20980101T000000/*/*_@var@.nc:12:60
 eof
 call_averager
 fi
