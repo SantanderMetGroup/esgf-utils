@@ -1,44 +1,54 @@
 #!/bin/bash
-##SBATCH --job-name=2002xp1
-##SBATCH --output=2002xp1_%j.out
-##SBATCH --error=2002xp1_%j.error
-##SBATCH --ntasks=1
-##SBATCH --ntasks-per-node=16
-##SBATCH --time=72:00:00
-##Enter the folder where the postporcessing scripts and files are located - need to adapt!!!
+#SBATCH --job-name=2002xp1
+#SBATCH --output=2002xp1_%j.out
+#SBATCH --error=2002xp1_%j.error
+#SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=16
+#SBATCH --time=72:00:00
+#Enter the folder where the postporcessing scripts and files are located - need to adapt!!!
 
-module load netcdf_tools
+# NOTE! This version of the script works for nco version 4.4.4 and cdo version 1.6.3
+# For the newer versions of tools, outcome of the script might differ
+# To use cdo version 1.9.8 and nco version 4.9.1 on Atlatmira:
+# export PATH="/home/uc15/uc15004/miniconda3/bin:$PATH"
+# source activate cdo #using this,cdo version 1.9.8 and nco version 4.9.1 are loaded
+
 echo "I'm running in ${HOSTNAME}, and today is $(date)"
 
-sortxtrm="0"
-post1="0"
-post2="0"
-post3="1"
+source ./dirs
 
-year_block=(2098)
-BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
-SCRIPTDIR="${BASEDIR}/scripts"
-GEOFILEDIR="/gpfs/res_projects/uc15/DOMAINS/CORDEX_SouthAm044_WRF3.4.1"
-FULLFILE="${BASEDIR}/scripts"
-DOMAIN=1
-TMPDIR="${BASEDIR}/scripts/tmpdir"
-POSTDIR="${BASEDIR}/post_data/post_fullres"
-POST2DIR="${BASEDIR}/post_data/post_CORDEX"
-FIGSDIR=$(pwd)/figs
+# Define what to do
+sortxtrm="0"	# organise and rename wrfxtrm files, direct output from the model, to be able to run the postprocessing
+post1="0"	# run post 1 --> create netcdf files per variable, merged in month files and organised in yearly folders
+post2="1"	# run post 2 --> create post_CORDEX files, merged in yearly, 5yearly, or 10yearly data, with predefined frequencies 
+post3="0"	# run post 3 --> fixing attributes, meta data, spatial and temporal dimensions
+
+# Define year blocs to sort wrfxtrm files and to do the postprocessing 1 
+year_block=(2090 2094 2098) 
+
+export SWPP_FULLFILE="${SCRIPTDIR}/wrffull_corwes.nc"
+export SWPP_GEOFILE="${SCRIPTDIR}/geo_em.d01.nc" 
+export SWPP_TEMPORARY_STORAGE=$TMPDIR
+export SWPP_WRFNCXNJ_TABLE="${SCRIPTDIR}/wrfncxnj.table"
+export SWPP_NETCDF_ATTRIBUTES="${SCRIPTDIR}/attributes.cdl"
+export SWPP_WRFNCXNJ_GATTR="${SCRIPTDIR}/wrfnc_extract_and_join.gattr_CORWES"
+export SWPP_RLAT="${SCRIPTDIR}/rlat_file.nc"
+export SWPP_RLON="${SCRIPTDIR}/rlon_file.nc"
+
 
 if test ${sortxtrm} -eq 1; then
 
+module load netcdf_tools
+
 for ij in "${year_block[@]}"
   do
-  echo $ij
+  echo $ij 
 
-  DATEDIR="CanESM2_rcp85-default-${ij}0101T000000"
-  INPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/output"
-  OUTPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/post0/"
-  INPUTPOST1="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/post0/WRFXTRM/XTRM_MONTHLY"
-  OUTPUTPOST1="${BASEDIR}/post_data/post_fullres/${DATEDIR}/" 
-  INPUTPOST2="${OUTPUTPOST1}"
-  OUTPUTPOST2="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/post2/"  
+REALIZATION="${WRF4G_EXP}-${ij}0101T000000"
+INPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${REALIZATION}/output"
+OUTPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${REALIZATION}/post0/"
+INPUTPOST1="${BASEDIR}/data/CanESM2_rcp85/${REALIZATION}/post0/WRFXTRM/XTRM_MONTHLY"
+OUTPUTPOST1="${BASEDIR}/post_data/post_fullres/${REALIZATION}/" 
 
   wdir="${OUTPUTPOST0}/WRFXTRM/"
   ydir="${wdir}/XTRM_YEARLY"
@@ -175,84 +185,68 @@ for i in "${years[@]}"
        mv wrfxtrm_d01_${i}.nc $ydir/
    done
 done
-echo "work on the block ${years} completed succesfully"
+echo "Work on the block ${years} completed succesfully - files ready for post1"
 fi
 
 #######################################################################################################################################
 #processing post1
 
-
 if test ${post1} -eq 1; then
 
-#Load necessary libraries
 export PATH="/home/uc15/uc15004/miniconda3/bin:$PATH"
-module load netcdf_tools
 source activate wrfncxnj_py2.7
-echo $(python --version)
+
+export SWPP_WRFNCXNJ_PY=wrfncxnj
 
 #Variables that will be taken out from the original wrf
 filetype="xtrm"
 vars=T2MAX,T2MIN
-levels="850,500,200"
-slevels="0.05,0.25,0.70,1.50"
-filter="-v ${vars} -l ${levels} -s ${slevels}"
+filter="-v ${vars}"
 
 for ij in "${year_block[@]}"
   do
   echo $ij
 
-DATEDIR="CanESM2_rcp85-default-${ij}0101T000000"
-INPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/output"
-OUTPUTPOST0="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/post0/WRFXTRM/XTRM_MONTHLY/"
-INPUTPOST1="${OUTPUTPOST0}"
-OUTPUTPOST1="${BASEDIR}/post_data/post_fullres/${DATEDIR}/" 
-INPUTPOST2="${OUTPUTPOST1}"
-OUTPUTPOST2="${BASEDIR}/data/CanESM2_rcp85/${DATEDIR}/post2/"
+REALIZATION="${WRF4G_EXP}-${ij}0101T000000"
+INPUTPOST0_XTRM="${BASEDIR}/data/CanESM2_rcp85/${REALIZATION}/post0/WRFXTRM/XTRM_MONTHLY"
 
-dir_scripts=${SCRIPTDIR}
-in_path=${INPUTPOST1}   
-out_path=${OUTPUTPOST1}
-realisation=${DATEDIR}
-
-export SWPP_TEMPORARY_STORAGE=$TMPDIR
-export SWPP_FULLFILE=${SCRIPTDIR}/wrffull_corwes.nc
-export SWPP_GEOFILE=${SCRIPTDIR}/geo_em.d01.nc  
-export SWPP_WRFNCXNJ_PY=wrfncxnj 
-export SWPP_WRFNCXNJ_GLOBALATTR=${SCRIPTDIR}/wrfnc_extract_and_join.gattr_CORWES           #attributes defined in a file located in the scripts
-export SWPP_WRFNCXNJ_TABLE=/gpfs/res_projects/uc15/apps/wrfncxnj/wrfncxnj/wrfncxnj.table   #table containg CORDEX naming 
+indir=${INPUTPOST0_XTRM}   
+outdir=${OUTPUTPOST1}
 
 test "${filetype}" == "xtrm" && filter="${filter} -y ${filetype} --dont-check-nofim"
 
 cd ${SCRIPTDIR}
-expdir="${OUTPUTPOST1}"
-   mkdir -p ${OUTPUTPOST1}
-   export SWPP_OUTPUT_PATTERN=${expdir}/'${year}/CDX_CANESM2_DAM_${year}${month}_[varcf][level].nc'
-   bash ./swpp_wrfnc2cf_SAM_xtrm.sh ${filter} -i ${INPUTPOST1}
+   mkdir -p ${outdir}
+   export SWPP_OUTPUT_PATTERN=${outdir}/${REALIZATION}/'${year}/CDX_CANESM2_3H_${year}${month}_[varcf][level].nc'
+   ./swpp_wrfnc2cf.sh ${filter} -i ${indir}
 done
 echo "post1 completed succesfully"
+conda deactivate
 fi
+
 #######################################################################################################################################
 #processing post2
 if test ${post2} -eq 1; then
 
-set -e
-export PATH="/home/uc15/uc15004/miniconda3/bin:$PATH"
-source activate wrfncxnj_py2.7
 module load netcdf_tools
 
-BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
-SCRIPTDIR="${BASEDIR}/scripts"
-TMPDIR="${SCRIPTDIR}/tmpdir"
-POSTDIR="${BASEDIR}/post_data/post_fullres"
-POST2DIR="${BASEDIR}/post_data/post_CORDEX"
-FIGSDIR=$(pwd)/figs
 
-dir_scripts=${SCRIPTDIR}
-in_path=${POSTDIR}
-out_path=${POST2DIR}
-export SWPP_TEMPORARY_STORAGE=$TMPDIR
+indir="${BASEDIR}/post_data/post_fullres" #${OUTPUTPOST1}
+outdir=${OUTPUTPOST2}
+freq="day"
+bname="SAM-44_CCCma-CanESM2_rcp85_r1i1p1_UCAN-WRF341I_v2"
 
-cropcmd='-selindexbox,11,156,11,177' # Removing 10 gridpoints of boudnaries.
+# Scenarios 
+per1y="2002-2002,2003-2003,2004-2004,2005-2005,2006-2006,2007-2007,2008-2008,2009-2009,2010-2010"
+per5y="2006-2010,2011-2015,2016-2020,2021-2025,2026-2030,2031-2035,2036-2040,2041-2045" #2046-2050,2051-2055,2056-2060,2061-2065,2066-2070,2071-2075,2076-2080,2081-2085,2086-2090,2091-2095,2096-2100" 
+per10y="2002-2010,2011-2020,2021-2030,2031-2040,2041-2050,2051-2060,2061-2070,2071-2080,2081-2090,2091-2100"  
+
+
+
+# Removing 10 gridpoints of boudnaries.
+cropcmd='-selindexbox,11,156,11,177' 
+
+# Parameters for shifting time
 DYS="-settime,12:00 -shifttime,-1" # Se utiliza para las variables extremas
 DX="-settime,12:00 -daymax"
 DN="-settime,12:00 -daymin"
@@ -263,20 +257,15 @@ D24="-seltime,00:00"
 D12="-seltime,00:00,12:00"
 D06="-seltime,00:00,06:00,12:00,18:00"
 DMONTH="-settime,00:00 -monmean -setday,1"
-#DMONTHX="-settime,12:00 -monmax -setday,1"
+DMONTHX="-settime,12:00 -monmax -setday,1"
 DSEAS="-settime,12:00 -seasmean -shifttime,-45 -setday,15"
 DSEASX="-settime,12:00 -seasmax -shifttime,-45 -setday,15"
 
-cd ${dir_scripts}
 
-
+cd ${SCRIPTDIR}
 call_averager(){
-  ivar=tasmax; ovar=tasmaxts; freq="day"; per=${per5y}; cmd="${DX}"; cmd_swpp_averager  
-  ivar=tasmin; ovar=tasmints; freq="day"; per=${per5y}; cmd="${DN}"; cmd_swpp_averager
-<<comm
-  ivar=clwmr200; ovar=clwmr200; freq="day"; per=${per5y}; cmd="${DM}"; cmd_swpp_averager
-  ivar=clwmr500; ovar=clwmr500; freq="day"; per=${per5y}; cmd="${DM}"; cmd_swpp_averager
-comm
+  ivar=tasmax; ovar=tasmaxts; freq=${freq}; per=${per5y}; cmd="${DX}"; cmd_swpp_averager  
+  ivar=tasmin; ovar=tasmints; freq=${freq}; per=${per5y}; cmd="${DN}"; cmd_swpp_averager
   rm swpp_ave_files
 }
 
@@ -286,97 +275,69 @@ cmd_swpp_averager() {
     -f swpp_ave_files_${ivar} \
     -c "${cmd} ${cropcmd}" \
     -p ${per} $(test ${ivar} != ${ovar} && echo "-r ${ivar},${ovar}") \
-    -o ${out_path}/${ovar}_${bname}_${freq}_'${iyear}0101-${fyear}1231'.nc
-
-BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
-SCRIPTDIR=${BASEDIR}/scripts
-POSTDIR="${BASEDIR}/post_data/post_fullres"
-POST2DIR="${BASEDIR}/post_data/post_CORDEX"
-FIGSDIR=$(pwd)/figs
-
-
+    -o ${outdir}/${ovar}_${bname}_${freq}_'${iyear}0101-${fyear}1231'.nc
   rm swpp_ave_files_${ivar}
-#--cdo-flags -z zip_4 -f nc4c \
 }
 
-###########################################################################
-########################  Scenarios  ######################################
-###########################################################################
+${INPUTPOST2}/*/@var@_${domname}*.nc:0:999
 
-per1y="2002-2002,2003-2003,2004-2004,2005-2005,2006-2006,2007-2007,2008-2008,2009-2009,2010-2010"
-per5y="2006-2010,2011-2015,2016-2020,2021-2025,2026-2030,2031-2035,2036-2040,2041-2045,2046-2050,2051-2055,2056-2060,2061-2065,2066-2070,2071-2075,2076-2080,2081-2085,2086-2090,2091-2095,2096-2100" 
-per10y="2002-2010,2011-2020,2021-2030,2031-2040,2041-2050,2051-2060,2061-2070,2071-2080,2081-2090,2091-2100" 
+# Here define the folder where raw files are located --> tipically the folder where output from post1 is created
+# NOTE! 
+# For example, if WRF4G is run in 5year chunks, and you want to aggreate files from the year 2006 to 2010, you need to load the data
+# from the 2002 chunk (2002-2006), as well as from the 2006 chunk (2006-2010). The script considers the first year in each chunk as 
+# a spin up year, therefore is not taken into the account. 
 
-bname="SAM-44_CCCma-CanESM2_rcp85_r1i1p1_UCAN-WRF341I_v2"
-
-cat << eof > swpp_ave_files
-  ${in_path}/CanESM2_rcp85-default-20020101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20060101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20100101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20140101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20180101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20220101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20260101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20300101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20340101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20380101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20420101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20460101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20700101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20740101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20780101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20820101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20860101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20900101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20940101T000000/*/*_@var@.nc:12:60
-  ${in_path}/CanESM2_rcp85-default-20980101T000000/*/*_@var@.nc:12:60
-eof
+cat << EOF > swpp_ave_files
+  ${indir}/CanESM2_rcp85-default-20020101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20060101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20100101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20140101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20180101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20220101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20260101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20300101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20340101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20380101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20420101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20460101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20700101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20740101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20780101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20820101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20860101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20900101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20940101T000000/*/*_@var@.nc:12:60
+  ${indir}/CanESM2_rcp85-default-20980101T000000/*/*_@var@.nc:12:60
+EOF
 call_averager
+echo "post2 completed succesfully"
 fi
-
 
 #######################################################################################################################################
 #processing post3
 if test ${post3} -eq 1; then
-set -e
-export PATH="/home/uc15/uc15004/miniconda3/bin:$PATH"
-source activate wrfncxnj_py2.7
+
 module load netcdf_tools
 
-BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
-SCRIPTDIR="${BASEDIR}/scripts"
-TMPDIR="${BASEDIR}/scripts/tmpdir"
-POSTDIR="${BASEDIR}/post_data/post_fullres"
-POST2DIR="${BASEDIR}/post_data/post_CORDEX"
-
 expdir=${BASEDIR}
-dir_scripts=${SCRIPTDIR}
-in_path=${POSTDIR}
-out_path=${POST2DIR}
-export SWPP_TEMPORARY_STORAGE=$TMPDIR
-
-cd ${dir_scripts}
-export SWPP_TEMPORARY_STORAGE=$TMPDIR
-export SWPP_WRFNCXNJ_TABLE=/gpfs/res_projects/uc15/apps/wrfncxnj/wrfncxnj/wrfncxnj.table
-export SWPP_NETCDF_ATTRIBUTES=${dir_scripts}/attributes.cdl
-
-######################################################################################################
-# Josipa changed 11.12.2019 - file names
+outdir=${OUTPUTPOST2}
 bname="SAM-44_CCCma-CanESM2_rcp85_r1i1p1_UCAN-WRF341I_v2"
-######################################################################################################
+freq="day"
+
+cd ${SCRIPTDIR}
 
 function modify_them() {
   while read bname expdir; do
   test ${bname:0:1} = "#" && continue
-  export SWPP_WRFNCXNJ_GATTR=${SCRIPTDIR}/wrfnc_extract_and_join.gattr_CORWES
-   ./swpp_shifttime_new -i ${out_path}/tasmaxts_${bname}_day_'????????-????????'.nc -l 0.5 -r 0.5 -v T2MAX -c 'time: maximum'
-   ./swpp_shifttime_new -i ${out_path}/tasmints_${bname}_day_'????????-????????'.nc -l 0.5 -r 0.5 -v T2MIN -c 'time: minimum'
+   ./swpp_shifttime -i ${outdir}/tasmaxts_${bname}_${freq}_'????????-????????'.nc -l 0.5 -r 0.5 -v T2MAXTS -c 'time: maximum'
+   ./swpp_shifttime -i ${outdir}/tasmints_${bname}_${freq}_'????????-????????'.nc -l 0.5 -r 0.5 -v T2MINTS -c 'time: minimum'
   done
 }
 
 cat << EOF | modify_them
 ${bname} ${BASEDIR}
 EOF
+echo "post3 completed succesfully"
 fi
 
 
