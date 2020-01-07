@@ -1,5 +1,7 @@
-#! /bin/bash 
-module load netcdf_tools
+#! /bin/bash
+
+# NOTE! This version of the script works for nco version 4.4.4 and cdo version 1.6.3
+# For the newer versions of tools, outcome of the script might differ
 
 function usage(){
   cat << End_of_help
@@ -36,9 +38,11 @@ tmpdirbase=${SWPP_TEMPORARY_STORAGE}
 xnjtable=${SWPP_WRFNCXNJ_TABLE}
 xnjgattr=${SWPP_WRFNCXNJ_GATTR}
 attributes=${SWPP_NETCDF_ATTRIBUTES}
+rlat_file=${SWPP_RLAT}
+rlon_file=${SWPP_RLON}
 
 input=""
-is_dry=0
+is_dry="0"
 shifttime="0"
 leftbnd="0"
 rightbnd="0"
@@ -47,13 +51,13 @@ rightbnd="0"
 monbnd="0"
 while test -n "$1"; do
   case "$1" in
-    --left-bound|-l) leftbnd=$2; shift ;;
+    --left-bound|-l) leftbnd="$2"; shift ;;
     --right-bound|-r) rightbnd="$2"; shift ;;
     --shift-time|-s) shifttime="$2"; shift ;;
     --month-bound|-b) monbnd="$2"; shift ;;
     --variables|-v) vars="$2"; shift ;;
-    --cell-method|-c) cellmethod=$2; shift ;;
-    --temporary-storage|-t) tmpdirbase=$2; shift ;;
+    --cell-method|-c) cellmethod="$2"; shift ;;
+    --temporary-storage|-t) tmpdirbase="$2"; shift ;;
     --input|-i) input="${input},$2"; shift ;;
     --dry-run|-n) is_dry=1 ;;
     --year|-y) year="$2"; shift ;;
@@ -110,9 +114,8 @@ function ncatted_global_att() {
 
 scriptdir=$( (cd `dirname $0` && echo $PWD) )
 thisdir=$(pwd)
-#
+
 #  Get a private space to run
-#
 if test -n "${tmpdirbase}"; then
   tmpdir=${tmpdirbase}/tmpdir.`date +%Y%m%d%H%M%S%n`
 else
@@ -121,9 +124,8 @@ fi
 mkdir -p ${tmpdir} && cd ${tmpdir} || exit
 
 print_config
-#
+
 #   Get file list
-#
 rm -f cache.filelist
 for ifiles_skipfiles_maxfiles in ${input//,/ }; do
   read ifiles skipfiles maxfiles <<< ${ifiles_skipfiles_maxfiles//:/ }
@@ -142,35 +144,38 @@ fi
 if test -n "${chname}"; then
   cdooperator="${cdooperator} -chname,${chname}"
 fi
-#
+
 #   Create auxiliary netcdf files
-#
 ncgen -o attributes.nc < ${attributes} # --> attributes.nc
 (
   echo "netcdf gattr {"
   cat ${xnjgattr} | while read key val; do echo "  :${key} = ${val} ;"; done
   echo "}"
 ) | ncgen -o gattr.nc      # --> gattr.nc
-#
+
 #   Main loop
-#
 cat cache.filelist | while read ncfile; do
-  if ncdump -h ${ncfile} | grep -q SWPP_SHIFTTIME; then
-    echo "${ncfile} was already processed by swpp_shifttime !!"
-    echo "Unexpected results may occur by a second processing! I'm not touching this file."
-    continue
-  fi
+# Checking if post3 has been already done
+  #if ncdump -h ${ncfile} | grep -q tracking_id; then
+  # echo "${ncfile} was already processed by swpp_shifttime!!"
+  # echo "Unexpected results may occur by a second processing, check the file"
+  # continue
+  #fi 
+
   if test "${shifttime}" != "0"; then
     cdo shifttime,${shifttime} ${ncfile} s1
     mv s1 ${ncfile}
   fi
+
+# NCO code by G. Nikulin, SMHI
   if test "${leftbnd}" != "0" -o "${rightbnd}" != "0"; then
-    # NCO code by G. Nikulin, SMHI
     test -f bnds_file.nc && rm bnds_file.nc
     ncap2 -h -v -O -s 'defdim("bnds",2); time_bnds[$time, bnds]=0.; time_bnds(:, 0)=time-'${leftbnd}'; time_bnds(:, 1)=time+'${rightbnd}';' ${ncfile} bnds_file.nc
     ncks -A -a -v time_bnds -h bnds_file.nc ${ncfile}
     ncatted -h -a bounds,time,o,c,"time_bnds" ${ncfile}
   fi
+
+# time_bnds for monthly data
   if test "${monbnd}" != "0"; then
     let i=0
     for fecha in `cdo showdate ${ncfile}`;do
@@ -196,9 +201,13 @@ cat cache.filelist | while read ncfile; do
     ncatted -h -a long_name,time_bnds,o,c,"time bounds" -a bounds,time,o,c,"time_bnds" s1
     mv s1 ${ncfile}
   fi
+
+# Changing metadata for variables
   for xnjvar in ${vars//,/ }; do
     var=$(ipcc_varname $xnjvar $xnjtable)
+    echo ${cellmethod}
     ncatted -h \
+      -a cell_methods,,d,, \
       -a cell_methods,${var},o,c,"${cellmethod}" \
       -a missing_value,${var},o,f,1.e+20 \
       -a grid_mapping,${var},o,c,"rotated_pole" \
@@ -207,90 +216,102 @@ cat cache.filelist | while read ncfile; do
       -a standard_name,${var},o,c,"$(var_stdname $xnjvar $xnjtable)" \
       ${ncfile}
   done # var
+
+
+# Setting refference time
   cdo setreftime,1949-12-01,00:00 ${ncfile} s2
   mv s2 ${ncfile}
-  ncatted -h -a ,global,d,, ${ncfile}     # Borro todos los atributos globales (en el post1 se habian puesto unos mal)
-  ncatted -h -a SWPP_SHIFTTIME,global,o,c,"shift: ${shifttime}, left: ${leftbnd}, right: ${rightbnd}" ${ncfile}
-  ncatted -h -a creation_date,global,a,c,"`date +%Y-%m-%d-T%H:%M:%SZ`" ${ncfile}
+
+# Renaming and fixing time and space coordinates
   ncks -h -A attributes.nc ${ncfile}
-  ncks -h -A gattr.nc ${ncfile}
   ncatted -h -a axis,time,o,c,"T" ${ncfile}
   ncatted -h -a ,time_bnds,d,, ${ncfile}
-
   ncrename -h -d nb2,bnds ${ncfile}
   ncrename -h -d x,rloncoord ${ncfile}
   ncrename -h -d y,rlatcoord ${ncfile}
 
-  if ncdump -v heightv ${ncfile} | grep -q 'No such variable'; then
-     echo "${ncfile} doesn't have coordinate heightv"
-     continue
-  else
-     ncrename -h -v heightv,height ${ncfile}
-     ncrename -h -d heightv,height ${ncfile}
-  fi
+
+# Checking coordinate height
   if ncdump -v height ${ncfile} | grep -q 'No such variable'; then
      echo "${ncfile} doesn't have coordinate height"
      continue
   else
      ncatted -h -a coordinates,${var},o,c,"lon lat height" -a long_name,height,o,c,"height" ${ncfile}
-     ncwa -a height -h ${ncfile} new.nc
-     mv new.nc ${ncfile}
-     ncap2 -h -s "height=height/1.0" ${ncfile} s3 # --> Tricky!! To change from float to double
-     mv s3 ${ncfile}
+     ncwa -h -a height ${ncfile} ${ncfile}_tmp
+     mv ${ncfile}_tmp ${ncfile}
+     #ncap2 -h -s "height=height/1.0" ${ncfile} ${ncfile}_tmp # --> Tricky!! To change from float to double
+     #mv ${ncfile}_tmp ${ncfile}
   fi
+
+# Checking coordinate slev
   if ncdump -v slev ${ncfile} | grep -q 'No such variable'; then
      echo "${ncfile} doesn't have coordinate soil level" 
      continue
   else
      ncatted -h -a coordinates,${var},o,c,"lon lat slev" -a long_name,slev,o,c,"soil level" ${ncfile}
-     #ncwa -a slev -h ${ncfile} new.nc
-     mv new.nc ${ncfile}
+     ncwa -h -a slev ${ncfile} ${ncfile}_tmp
+     mv ${ncfile}_tmp ${ncfile}
   fi
+
+# Checking coordinate plev
   if ncdump -v plev ${ncfile} | grep -q 'No such variable'; then
      echo "${ncfile} doesn't have coordinate pressure"
      continue
   else
      ncatted -h -a coordinates,${var},o,c,"lon lat plev" -a long_name,plev,o,c,"pressure" ${ncfile}
-     ncwa -a plev -h ${ncfile} new.nc
-     mv new.nc ${ncfile}
+     ncwa -h -a plev ${ncfile} ${ncfile}_tmp
+     mv ${ncfile}_tmp ${ncfile}
   fi
 
+# Checking coordinates rlon and rlat
   if ncdump -v rlon ${ncfile} | grep -q 'No such variable'; then
      continue
   else
      echo "${ncfile} doesn't have coordinate rlon, I'm going to create it"
      ncks -A -a -v rlon -h ${scriptdir}/rlon_file.nc ${ncfile}
-     ncatted -h -a long_name,rlon,o,c,"longitude in rotated pole grid" -a units,rlon,o,c,"degrees" -a standard_name,rlon,o,c,"grid_longitude" -a axis,rlon,o,c,"X" ${ncfile}
-     ncap2 -h -s "lon=lon/1.0" ${ncfile} s1 # --> Tricky!! To change from float to double
-     mv s1 ${ncfile}
+     ncatted -h -a long_name,rlon,o,c,"longitude in rotated pole grid" \
+                -a units,rlon,o,c,"degrees" \
+                -a standard_name,rlon,o,c,"grid_longitude" \
+                -a axis,rlon,o,c,"X" ${ncfile}
+     ncap2 -h -s "lon=lon/1.0" ${ncfile} ${ncfile}_tmp # --> Tricky!! To change from float to double
+     mv ${ncfile}_tmp ${ncfile}
   fi
+  # Shiftting rlon for 180 degrees if necessary
+     ncap2 -h -s 'rlon=rlon+180' ${ncfile} s3
+     mv s3 ${ncfile}
+
   if ncdump -v rlat ${ncfile} | grep -q 'No such variable'; then
      continue
   else
      echo "${ncfile} doesn't have coordinate rlat, I'm going to create it"
      ncks -A -a -v rlat -h ${scriptdir}/rlat_file.nc ${ncfile}
-     ncatted -h -a long_name,rlat,o,c,"latitude in rotated pole grid" -a units,rlat,o,c,"degrees" -a standard_name,rlat,o,c,"grid_latitude" -a axis,rlat,o,c,"Y" ${ncfile}
-     ncap2 -h -s "lat=lat/1.0" ${ncfile} s2 # --> Tricky!! To change from float to double
-     mv s2 ${ncfile}
+     ncatted -h -a long_name,rlat,o,c,"latitude in rotated pole grid" \
+                -a units,rlat,o,c,"degrees" \
+                -a standard_name,rlat,o,c,"grid_latitude" \
+                -a axis,rlat,o,c,"Y" ${ncfile}
+     ncap2 -h -s "lat=lat/1.0" ${ncfile} ${ncfile}_tmp # --> Tricky!! To change from float to double
+     mv ${ncfile}_tmp ${ncfile}
   fi
+
   ncrename -h -d rloncoord,rlon ${ncfile}
   ncrename -h -d rlatcoord,rlat ${ncfile}
-  ncatted -h -a grid_mapping,${var},o,c,"rotated_pole" ${ncfile}
   ncatted -h -a cell_methods,,d,, ${ncfile}
-  ncatted -h -a _CoordinateAxisType,lon,d,, -a _CoordinateAxisType,lat,d,, ${ncfile}
   ncatted -h -a cell_methods,${var},o,c,"${cellmethod}" ${ncfile}
+  ncatted -h -a _CoordinateAxisType,lon,d,, -a _CoordinateAxisType,lat,d,, ${ncfile}
 
-#############################################################################################################
-# Added by Josipa 11.12.2019, adding tracking number to global attributes
-     ncatted -h -a tracking_id,global,o,c,"`uuidgen -r`" ${ncfile}
-
-#############################################################################################################
+# Changing  global attributes 
+  ncatted -h -a ,global,d,, ${ncfile}     # Borro todos los atributos globales (en el post1 se habian puesto unos mal)
+  ncks -h -A gattr.nc ${ncfile}
+  ncatted -h -a creation_date,global,a,c,"`date +%Y-%m-%d-T%H:%M:%SZ`" ${ncfile}
+  ncatted -h -a tracking_id,global,o,c,"`uuidgen -r`" ${ncfile}
+  #ncatted -h -a SWPP_SHIFTTIME,global,o,c,"shift: ${shifttime}, left: ${leftbnd}, right: ${rightbnd}" ${ncfile}
+   
+# Data compression
   nccopy -k 4 -d 4 -s ${ncfile} ${ncfile}.post # --> Para comprimir los archivos y que ocupen menos espacio
-#############################################################################################################
-# Added by Josipa 11.12.2019, unlimited time to defined numebr of timesteps
+  #mv ${ncfile}.post ${ncfile}
+
+# Limitting time dimension
      nccopy -u ${ncfile}.post ${ncfile}
      rm ${ncfile}.post
-#############################################################################################################
-  #mv ${ncfile}.post ${ncfile}
 
 done # ncfile
