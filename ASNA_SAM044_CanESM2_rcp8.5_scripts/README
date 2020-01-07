@@ -4,7 +4,7 @@ Description of the ASNA post processing scripts for WRFv341I wrfoutputs to follo
 The procedure can be devided in 3 parts:
 1. Postprocessing of regular files (scripts: sam44_post0.sh, sam44_post1.sh, sam44_post2.sh, sam44_post3.sh)
 2. Postprocessing of fixed files   (script:  sam44_post_fx.sh)
-3. Postprocessing of extreme files (script:  sam44_post_xtrm_all.sh)
+3. Postprocessing of extreme files (script:  sam44_post_wrfxtrm.sh)
 
 
 
@@ -15,7 +15,9 @@ The procedure can be devided in 3 parts:
 --------------------------------------------------
 -----sam44_post0.sh [uses postprocessor.xxxx]-----
 --------------------------------------------------
-	In this step wrfout files the necessary information are extracted from the wrfout files, and the size of wrfoutputs is signifcantly shrinked. The postprocessor.CORDEX_ALL, which is run in this 0th step of the postprocessing, extracts the necessary predified variables, and interpolates 3D variables on the pressure levels defined by a user with py_interp.py - a program used for extraction and interpolation. The script postprocessor.xxxx is a part od the WRF4G, typically located in the WRF4G submit/bin folder. 
+The script used in this step: ***postprocessor.xxxx***
+
+	In this step all the necessary information are extracted from the wrfout files (direct WRF output), and the size of the files is signifcantly shrinked. The postprocessor.xxxx (for example postprocessor.CORDEX_ALL), which is run in this 0th step of the postprocessing, extracts the necessary predified variables, and interpolates 3D variables on the pressure levels defined by a user, with py_interp.py - a program in python used for extraction and interpolation. The script postprocessor.xxxx is a part od the WRF4G, typically located in the WRF4G submit/bin folder. 
 ***NOTE!***
 This step can be run as a part of WRF4G 
 
@@ -24,15 +26,15 @@ This step can be run as a part of WRF4G
 ------------------------------------------------
 The script used in this step: ***swpp_wrfnc2cf.sh***
 
-This creats files for each varable per month per frequency as defined by an user, and organised in folders per year. 
+This step creates files for each selected variable per month and per frequency as defined by a user, and organised in folders per year. 
 A user need to define:
-a) the filetype (e.g. wrfout, wrfxtrm, or wrfpress)
-b) variable names to extract - as they are given in the wrfoutput files (e.g. T2,RAINF,PSFC,MSLP,Q2...)
-c) the inteporlation levels in the atmosphere in [hPa] (e.g. levels="850,500,200")
+a) the filetype (e.g. wrfout, wrfxtrm)
+b) variable names as in the wrfoutput files to be extracted - (e.g. vars="T2,RAINF,PSFC,MSLP,Q2...")
+c) the inteporlation levels in the atmosphere in [hPa] - (e.g. levels="850,500,200")
 d) in the soil in [m] (slevels="0.05,0.25,0.70,1.50"). 
 
 The procedure of the extraction is done by the above mentioned script (swpp_wrfnc2cf.sh), and the files necessary for running the script are:
-1) wrfncxnj_py (a python script for interpolation)
+1) wrfncxnj_py (a python script for interpolation, necessesary to install it, or to load the enviroment "source activate wrfncxnj_py2.7")
 2) a full wrfout file to collect metadata (e.g. wrffull_corwes.nc)
 3) a full geo_em file to collect coordinates info (e.g. geo_em.d01.nc)
 4) a txt file containig the global attributes (e.g. wrfnc_extract_and_join.gattr_CORWES)
@@ -58,18 +60,18 @@ An example for the 2m temperature looks like this:
   ivar=tas; ovar=tas; freq="day"; per="2091-2095,2096-2100"; cmd="-settime,12:00 -daymean"; cmd_swpp_averager
 
 --------------------------------------------------
------sam44_post3.sh [uses swpp_shifttime_new]-----
+-----sam44_post3.sh [uses swpp_shifttime]-----
 --------------------------------------------------
-The script used in this step: ***swpp_shifttime_new***
+The script used in this step: ***swpp_shifttime***
 
-Here the final tunnig and modification of the cordex files is done with the program called swpp_shifttime_new. It corrects the timesteps, sets the correct time bounds as defines by a user, fixes the coordinate names and attributes if necessary, and does the final compression of the file.
+Here the final tunnig and modification of the cordex files is done with the program called swpp_shifttime. It corrects the timesteps, sets the correct time bounds as defines by a user, fixes the coordinate names and attributes if necessary, and does the final compression of the file.
 
 To run this step, the necessary files are:
 1) a table contaning all the variable names and corresponing descriptions as defined by the CORDEX community (e.g. wrfncxnj.table) 
 2) a txt file containig additional variable, coordinate to be included in the file (e.g. attributes.cdl)
 3) a txt file containig the global attributes (e.g. wrfnc_extract_and_join.gattr_CORWES)
 
-Before running the main script swpp_shifttime_new, for each varaible a user needs to define:
+Before running the main script swpp_shifttime, for each varaible a user needs to define:
 a) the name of the file to process (e.g. tas_${bname}_day_'????????-????????'.nc)
 b) the left shift of the time bound with respect to the version in the original wrfout file (e.g. -l 0.5)
 c) the right shift of the time bound with respect to the version in the original wrfout file (e.g. -r 0.5)
@@ -77,7 +79,7 @@ d) corresponing name of the variable in the original wrfout file (e.g. T2)
 e) corresponing averagining method that was applied in the post step 2 (e.g. for the temperure is 'time: mean')
 
 An example for the 2m temperature looks like this:
- 	./swpp_shifttime_new -i ${out_path}/tas_${bname}_day_'????????-????????'.nc  -l 0.5 -r 0.5 -v T2 -c 'time: mean'
+ 	./swpp_shifttime -i ${out_path}/tas_${bname}_day_'????????-????????'.nc  -l 0.5 -r 0.5 -v T2 -c 'time: mean'
 
 
 ******************************************************************************************************************************************************************************
@@ -99,7 +101,7 @@ a) Area that will be cropped out of the data (e.g. cropcmd='-selindexbox,11,156,
 b) The averagining method (for fixed variables it is "-seltimestep,1" ) for running swpp_averager 
 
 ***For running the swpp_shifttime_fx, a user needs to define just the name of the varaiable in the default wrfout file. Here is the example for orography:
-./swpp_shifttime_fx -i ${outdir}/orog_${bname}_r0i0p0_${rcmname}_fx.nc -v HGT
+./swpp_shifttime_fx -i ${outdir}/orog_${bname}_${freq}.nc -v HGT
 
 
 
@@ -108,9 +110,9 @@ b) The averagining method (for fixed variables it is "-seltimestep,1" ) for runn
 3. Postprocessing of extreme files:
 ***********************************
 --------------------------------
------sam44_post_xtrm_all.sh-----
+-----sam44_post_wrfxtrm.sh------
 --------------------------------
-This script postprocesses the extreme fields (e.g. tasmin, tasmax). The scripts contains 4 substeps - sortxtrm,post1,post2,post3. Setting a substep to 0 means the script will  skipp that substep, and if it is set to "1" the script goes through the procedure given by the substep. 
+This script postprocesses the extreme fields (e.g. tasmin, tasmax) directly from the wrfxtrm files. The scripts contains 4 substeps - sortxtrm,post1,post2,post3. Setting a substep to 0 means the script will  skipp that substep, and if it is set to "1" the script goes through the procedure given by the substep. 
 
 The substeps and their descriptions are:
 1) sorting the wrfxtrm files (sortxtrm="1")
