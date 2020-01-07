@@ -1,4 +1,4 @@
-#! /bin/bash -x
+#! /bin/bash
 
 #use python2.7.2
 
@@ -211,9 +211,9 @@ for yearmon in $(get_yearmons ${inputpath} ${filetype}); do
     ${xnjflags} \
     >& xnj${yearmon}.log
   mv filelist.txt filelist_${yearmon}.txt
-  if [[ "${filetype}" == "xtrm" ]]
-  then
-    fix_mon_xtrm "$(echo ${outfiles} | sed s/'\[varcf\]'/tasmax/ | sed s/'\[level\]'//)" ${month}
-    fix_mon_xtrm "$(echo ${outfiles} | sed s/'\[varcf\]'/tasmin/ | sed s/'\[level\]'//)" ${month}
-  fi
+  #if [[ "${filetype}" == "xtrm" ]]
+  #then
+  #  fix_mon_xtrm "$(echo ${outfiles} | sed s/'\[varcf\]'/tasmax/ | sed s/'\[level\]'//)" ${month}
+  #  fix_mon_xtrm "$(echo ${outfiles} | sed s/'\[varcf\]'/tasmin/ | sed s/'\[level\]'//)" ${month}
+  #fi
 done # yearmon
