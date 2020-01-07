@@ -1,6 +1,12 @@
-BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85"
-SCRIPTDIR=${BASEDIR}/scripts
-POSTDIR="${BASEDIR}/post_data/post_fullres"
-POST2DIR="${BASEDIR}/post_data/post_CORDEX"
-FIGSDIR=$(pwd)/figs
+WRF4G_EXP="CanESM2_rcp85-default"  	#Name of the WRF4G experiment
+
+BASEDIR="/home/uc15/uc15004/projects/EXPERIMENTS/josipa/SAM044_CanESM2_rcp8.5/CanESM2_rcp85" 	#base path to all data 
+SCRIPTDIR="${BASEDIR}/scripts"						#path to the postprocessing script, a working directory 
+TMPDIR="${BASEDIR}/scripts/tmpdir"					#path to the location of the temporary directory that will be created for the intermedate calculations 
+OUTPUTPOST1="${BASEDIR}/post_data/post_fullres" 			#path to the folder where output files after post1 will be written
+OUTPUTPOST1_FX="${BASEDIR}/post_data/post_fullres/*2006*/2006"	       	#path to the input files for a single year for postprocessing fixed variabels (orog, lco, sftlf..)
+OUTPUTPOST2="${BASEDIR}/post_data/post_CORDEX" 				#path to the folder where output files after post2 and post3 will be written
+
+
+
 
