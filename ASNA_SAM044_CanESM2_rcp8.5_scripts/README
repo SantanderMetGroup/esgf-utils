@@ -1,4 +1,46 @@
 ******************************************************************************************************************************************************************************
+Necessary libraries (tested and running with the indicated versions, with newer versions possible issues):
+   nco 4.4.4 
+   cdo 3.6.3
+   netcdf
+   wrfncxnj --> a python program called "wrfncxnj" than need to be downloaded and installes
+		On Altamira it is done by activating the enviroment "wrfncxnj_py2.7"
+		source activate wrfncxnj_py2.7
+
+******************************************************************************************************************************************************************************
+List of the files in the folder with the description
+******************************************************************************************************************************************************************************
+20. README
+
+Genreal files:
+---------------
+1. attributes.cdl				# file containing a character variable rotated_pole
+2. wrfnc_extract_and_join.gattr_CORWES		# txt file containig all global attributes defined by a user
+3. wrfnc_extract_and_join.gattr_CORWES_fx	# as previous, but for fixed variables
+4. wrfncxnj.table				# a table containig names and metadata of all the variables to be processed
+5. geo_em.d01.nc				# a full geo_em file, a direct output from WRF preprocessing, WPS
+6. rlon_file.nc					# netcdf file containig rlon which is extracted from the geo_em file (CLON), and relaxation zone is cut off
+7. rlat_file.nc					# netcdf file containig rlat which is extracted from the geo_em file (CLAT), and relaxation zone is cut off
+8. wrffull_corwes.nc				# a complete wrout file, for 1 timestep, as it is when created after running WRF
+9. dirs						# a txt file containig I/O paths necessary for running all the scripts 
+
+Scripts (more detailed description bellow):
+--------------------------------------
+10. sam44_post0.sh		# step 0 of the postprocessing
+11. sam44_post1.sh		# step 1 of the postprocessing
+12. sam44_post2.sh		# step 2 of the postprocessing
+13. sam44_post3.sh		# step 3 of the postprocessing
+14. sam44_post_fx.sh		# step 2 and 3 of the postprocessing for the fixed variables (orog, lco, sftlf, sftls)
+15. sam44_post_wrfxtrm.sh	# step 1, 2, and 3 for the postprocessing of the extreme variables tasmax and tasmin directly from the wrfxtrm files
+16. postprocessor.CORDEX_ALL	# a script used for step 0 of the postprocessing, extrats variables from the raw wrfout files to cut down the wrfout file size
+17. swpp_wrfnc2cf.sh		# a script that creates monthly files per selected variable, at the selected frequency
+18. swpp_averager		# a script that creates an agregated file ( e.g. per 1 year, 5 year, or 10 year), named according to the CORDEX 
+19. swpp_shifttime		# a script used the final fixes of the attributes and metadata
+20. swpp_shifttime_fx		# the same as previous, but only for the fixed variabels (orog, lco, sftlf, sftls), a simpler version of swpp_shifttime
+
+
+******************************************************************************************************************************************************************************
+******************************************************************************************************************************************************************************
 Description of the ASNA post processing scripts for WRFv341I wrfoutputs to follow CF metadata conventions for CORDEX
 ********************************************************************************************************************
 The procedure can be devided in 3 parts:
@@ -7,9 +49,6 @@ The procedure can be devided in 3 parts:
 3. Postprocessing of extreme files (script:  sam44_post_wrfxtrm.sh)
 
 
-
-******************************************************************************************************************************************************************************
-******************************************************************************************************************************************************************************
 1. Postprocessing of regular files:
 ***********************************
 --------------------------------------------------
@@ -118,11 +157,11 @@ The substeps and their descriptions are:
 1) sorting the wrfxtrm files (sortxtrm="1")
 	This part sorts the files in order to be readable by the post steps 1, 2, and 3. It reads the original wrfxtrm files, checks the reapeating timesteps if any, merge all 	the files per year, and then splits them into the monthly files that will be readable in the steps that follow. 
 2) post 1 as in postprocessing of regular files (post1="1")
-	sam44_post1.sh script adjuted for the wrfxtrm files
+	sam44_post1.sh script adjusted for the wrfxtrm files
 3) post 2 as in postprocessing of regular files (post2="1")
-	sam44_post2.sh script adjuted for the wrfxtrm files
+	sam44_post2.sh script adjusted for the wrfxtrm files
 4) post 3 as in postprocessing of regular files (post3="1")
-	sam44_post3.sh script adjuted for the wrfxtrm files
+	sam44_post3.sh script adjusted for the wrfxtrm files
 
 
 
