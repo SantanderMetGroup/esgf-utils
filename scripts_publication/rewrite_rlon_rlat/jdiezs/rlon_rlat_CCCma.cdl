@@ -1,0 +1,109 @@
+netcdf ps_SAM-44_ICHEC-EC-EARTH_historical_r12i1p1_SMHI-RCA4_v3_day_20010101-20051231 {
+dimensions:
+	rlat = 167 ;
+	rlon = 146 ;
+	time = UNLIMITED ; // (1826 currently)
+	bnds = 2 ;
+variables:
+	double lat(rlat, rlon) ;
+		lat:standard_name = "latitude" ;
+		lat:long_name = "latitude" ;
+		lat:units = "degrees_north" ;
+	double lon(rlat, rlon) ;
+		lon:standard_name = "longitude" ;
+		lon:long_name = "longitude" ;
+		lon:units = "degrees_east" ;
+	float ps(time, rlat, rlon) ;
+		ps:grid_mapping = "rotated_pole" ;
+		ps:_FillValue = 1.e+20f ;
+		ps:missing_value = 1.e+20f ;
+		ps:standard_name = "surface_air_pressure" ;
+		ps:long_name = "Surface Air Pressure" ;
+		ps:units = "Pa" ;
+		ps:coordinates = "lon lat" ;
+		ps:cell_methods = "time: mean" ;
+	double rlat(rlat) ;
+		rlat:standard_name = "grid_latitude" ;
+		rlat:long_name = "latitude in rotated pole grid" ;
+		rlat:units = "degrees" ;
+		rlat:axis = "Y" ;
+	double rlon(rlon) ;
+		rlon:standard_name = "grid_longitude" ;
+		rlon:long_name = "longitude in rotated pole grid" ;
+		rlon:units = "degrees" ;
+		rlon:axis = "X" ;
+	char rotated_pole ;
+		rotated_pole:grid_mapping_name = "rotated_latitude_longitude" ;
+		rotated_pole:grid_north_pole_latitude = 70.6 ;
+		rotated_pole:grid_north_pole_longitude = -56.06 ;
+	double time(time) ;
+		time:standard_name = "time" ;
+		time:units = "days since 1949-12-01 00:00:00" ;
+		time:calendar = "standard" ;
+		time:long_name = "time" ;
+		time:bounds = "time_bnds" ;
+		time:axis = "T" ;
+	double time_bnds(time, bnds) ;
+
+// global attributes:
+		:Conventions = "CF-1.4" ;
+		:contact = "rossby.cordex@smhi.se" ;
+		:creation_date = "2013-12-03-T12:57:12Z" ;
+		:experiment = "historical" ;
+		:experiment_id = "historical" ;
+		:driving_experiment = "ICHEC-EC-EARTH, historical, r12i1p1" ;
+		:driving_model_id = "ICHEC-EC-EARTH" ;
+		:driving_model_ensemble_member = "r12i1p1" ;
+		:driving_experiment_name = "historical" ;
+		:frequency = "day" ;
+		:institution = "Swedish Meteorological and Hydrological Institute, Rossby Centre" ;
+		:institute_id = "SMHI" ;
+		:model_id = "SMHI-RCA4" ;
+		:rcm_version_id = "v3" ;
+		:project_id = "CORDEX" ;
+		:CORDEX_domain = "SAM-44" ;
+		:product = "output" ;
+		:references = "http://www.smhi.se/en/Research/Research-departments/climate-research-rossby-centre" ;
+		:tracking_id = "598dc1ef-450f-4af9-b1b9-cf5c314be649" ;
+		:rossby_comment = "201329: CORDEX South America 0.44 deg | RCA4 v3 | ICHEC-EC-EARTH | r12i1p1 | historical | L40" ;
+		:rossby_run_id = "201329" ;
+		:rossby_grib_path = "/nobackup/rossby17/rossby/joint_exp/cordex/201329/raw/" ;
+data:
+
+ rlat = -38.28, -37.84, -37.4, -36.96, -36.52, -36.08, -35.64, -35.2, -34.76, 
+    -34.32, -33.88, -33.44, -33, -32.56, -32.12, -31.68, -31.24, -30.8, 
+    -30.36, -29.92, -29.48, -29.04, -28.6, -28.16, -27.72, -27.28, -26.84, 
+    -26.4, -25.96, -25.52, -25.08, -24.64, -24.2, -23.76, -23.32, -22.88, 
+    -22.44, -22, -21.56, -21.12, -20.68, -20.24, -19.8, -19.36, -18.92, 
+    -18.48, -18.04, -17.6, -17.16, -16.72, -16.28, -15.84, -15.4, -14.96, 
+    -14.52, -14.08, -13.64, -13.2, -12.76, -12.32, -11.88, -11.44, -11, 
+    -10.56, -10.12, -9.68, -9.24, -8.8, -8.36, -7.92, -7.48, -7.04, -6.6, 
+    -6.16, -5.72, -5.28, -4.84, -4.4, -3.96, -3.52, -3.08, -2.64, -2.2, 
+    -1.76, -1.32, -0.880000000000003, -0.439999999999998, 0, 
+    0.439999999999998, 0.880000000000003, 1.32, 1.76, 2.2, 2.64, 3.08, 3.52, 
+    3.96, 4.4, 4.84, 5.28, 5.72, 6.16, 6.6, 7.04, 7.48, 7.92, 8.36, 8.8, 
+    9.24, 9.68, 10.12, 10.56, 11, 11.44, 11.88, 12.32, 12.76, 13.2, 13.64, 
+    14.08, 14.52, 14.96, 15.4, 15.84, 16.28, 16.72, 17.16, 17.6, 18.04, 
+    18.48, 18.92, 19.36, 19.8, 20.24, 20.68, 21.12, 21.56, 22, 22.44, 22.88, 
+    23.32, 23.76, 24.2, 24.64, 25.08, 25.52, 25.96, 26.4, 26.84, 27.28, 
+    27.72, 28.16, 28.6, 29.04, 29.48, 29.92, 30.36, 30.8, 31.24, 31.68, 
+    32.12, 32.56, 33, 33.44, 33.88, 34.32, 34.76 ;
+
+ rlon = 143.92, 144.36, 144.8, 145.24, 145.68, 146.12, 146.56, 147, 147.44, 
+    147.88, 148.32, 148.76, 149.2, 149.64, 150.08, 150.52, 150.96, 151.4, 
+    151.84, 152.28, 152.72, 153.16, 153.6, 154.04, 154.48, 154.92, 155.36, 
+    155.8, 156.24, 156.68, 157.12, 157.56, 158, 158.44, 158.88, 159.32, 
+    159.76, 160.2, 160.64, 161.08, 161.52, 161.96, 162.4, 162.84, 163.28, 
+    163.72, 164.16, 164.6, 165.04, 165.48, 165.92, 166.36, 166.8, 167.24, 
+    167.68, 168.12, 168.56, 169, 169.44, 169.88, 170.32, 170.76, 171.2, 
+    171.64, 172.08, 172.52, 172.96, 173.4, 173.84, 174.28, 174.72, 175.16, 
+    175.6, 176.04, 176.48, 176.92, 177.36, 177.8, 178.24, 178.68, 179.12, 
+    179.56, 180, 180.44, 180.88, 181.32, 181.76, 182.2, 182.64, 183.08, 
+    183.52, 183.96, 184.4, 184.84, 185.28, 185.72, 186.16, 186.6, 187.04, 
+    187.48, 187.92, 188.36, 188.8, 189.24, 189.68, 190.12, 190.56, 191, 
+    191.44, 191.88, 192.32, 192.76, 193.2, 193.64, 194.08, 194.52, 194.96, 
+    195.4, 195.84, 196.28, 196.72, 197.16, 197.6, 198.04, 198.48, 198.92, 
+    199.36, 199.8, 200.24, 200.68, 201.12, 201.56, 202, 202.44, 202.88, 
+    203.32, 203.76, 204.2, 204.64, 205.08, 205.52, 205.96, 206.4, 206.84, 
+    207.28, 207.72 ;
+}
