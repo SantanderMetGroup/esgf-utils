@@ -1,85 +1,65 @@
-# Recipes for data search, data inventory generation and data download
+# ESGF utils
 
-## CMIP6 search, inventory and download
+Tools for dealing with ESGF.
 
-Generate a local index using `index.sh`
+## esgf-search
 
-CSV from index
+Query ESGF using either facet parameters or selection files. `esgf-search` requires `jq` and `curl`
 
-```bash
-< $INDEX jq -r --slurp 'map(map_values([.]|flatten|first)) | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] |@csv'
+Each paragraph in a SELECTION file will perform a query.
+
+Examples:
+
+- Return the JSON response: `esgf-search -q "project=CMIP5 variable=psl time_frequency=day cmor_table=day"`
+- Using SELECTION files: `esgf-search SELECTION1 SELECTION2`
+- Query and SELECTION files: `esgf-search -q "project=CMIP5 variable=psl time_frequency=day cmor_table=day" SELECTION1 SELECTION2 SELECTION3`
+- Return number of items: `esgf-search -q "project=CMIP5 variable=psl time_frequency=day cmor_table=day" | jq --slurp 'length'`
+- Return the search size: `esgf-search -q "project=CMIP5 variable=psl time_frequency=day cmor_table=day" SELECTION1 | jq --slurp 'map(.size)|add' | numfmt --to=iec`
+
+Selection file example (note that multiple facets are allowed in one line):
+
+```
+project=CMIP6 experiment_id=historical,ssp585
+source_id=CanESM5 variant_label=r1i1p1f1
+type=File
+
+project=CMIP6
+experiment_id=historical,ssp585
+source_id=CNRM-CM6-1
+variant_label=r1i1p1f2
 ```
 
-Inventory
+## esgf-metalink
 
-```bash
-# Aggregate variables by dataset
-jq --slurp 'map(. + { dataset_id: (.master_id|split(".")|del(.[7])|join(".")),master_id})    | group_by(.dataset_id)       | map(   reduce .[] as $item ({variables: []}; {dataset_id: $item.dataset_id, variables: (.variables + $item.variable)}  )   )' < $INDEX
+Create metalink files from the results of esgf-search
 
-# Export to csv
-jq -r 'map({dataset_id, variables: .variables|join(" ")})  |   (map(keys) | add | unique) as $cols   |     map(. as $row | $cols | map($row[.])) as $rows  |   $cols, $rows[]  |@csv'
+`esgf-search -q "project=CMIP6 experiment_id=ssp585 variable_id=pr frequency=mon type=File" | esgf-metalink > $METALINK_FILE`
+
+To download data protected by ESGF accounts:
+
+`
+aria2c --check-certificate=false --certificate=/PATH/TO/certificate-file --private-key=/PATH/TO/certificate-file --ca-certificate=/PATH/TO/certificate-file -M $METALINK_FILE
+`
+
+Set up the graphical interface:
+
+```
+git clone https://github.com/ziahamza/webui-aria2
+xdg-open webui-aria2/docs/index.html
 ```
 
-Download
+`esgf-download` is provided to help with aria2c download although it's use is not mandatory.
 
-```bash
-models='AWI-CM-1-1-MR BCC-CSM2-MR BCC-ESM1 CAMS-CSM1-0 CanESM5 CNRM-CM6-1 CNRM-ESM2-1 EC-Earth3-Veg EC-Earth3 IPSL-CM6A-LR MIROC6 HadGEM3-GC31-LL UKESM1-0-LL MRI-ESM2-0 GISS-E2-1-G GISS-E2-1-H CESM2-WACCM CESM2 GFDL-CM4 GFDL-ESM4 SAM0-UNICON'
-experiments='historical esm-hist ssp585'
-variables='tas pr'
-
-parallel -j1 synda install -y source_id={1} experiment_id={2} variable_id={3} member_id=r1i1p1f1 table_id=Amon ::: $models ::: $experiments ::: $variables
-
-parallel -j1 synda install -y source_id={1} experiment_id={2} variable_id=sftlf member_id=r1i1p1f1 table_id=fx ::: $models ::: $experiments
+```
+esgf-download -d /oceano/gmeteo/DATA/ESGF/REPLICA/DATA -g .globus/ -l logs metalink
 ```
 
-<!-- COMMENT by Antonio
+Also, CEDA has disabled range requests, required by `aria2c`, so `esgf-download-ceda` is provided to extract CEDA urls and use `curl` to perform the download. Note that when replicas are used this is not needed but CORDEX files have no replicas so this is the only workaround.
 
+```
+esgf-download-ceda -d /oceano/gmeteo/DATA/ESGF/REPLICA/DATA -g .globus/ metalink
+```
 
-base_url='https://esgf-data.dkrz.de/esg-search/search?project=CMIP6&format=application%2Fsolr%2Bjson&latest=true&replica=false'
+## esgf-facets-report
 
-
-activity=CMIP
-experiment=historical
-
-curl -s "${base_url}&activity_id=${activity}&experiment_id=${experiment}&fields=numFound" | vi -c 'set syntax=json' -
-
-#numFound
-curl -s "${base_url}&activity_id=${activity}&experiment_id=${experiment}&limit=0"
-
-https://esgf-data.dkrz.de/esg-search/search/?
-offset=0&
-limit=10&
-type=Dataset&
-replica=false&
-latest=true&
-activity_id=CMIP%2CScenarioMIP&
-variable_id=pr%2Csftlf%2Ctas&
-experiment_id=historical%2Cssp585&
-frequency=fx%2Cmon&
-table_id=Amon%2Cfx&
-mip_era=CMIP6
-&facets=mip_era%2Cactivity_id%2Cmodel_cohort%2Cproduct%2Csource_id%2Cinstitution_id%2Csource_type%2Cnominal_resolution%2Cexperiment_id%2Csub_experiment_id%2Cvariant_label%2Cgrid_label%2Ctable_id%2Cfrequency%2Crealm%2Cvariable_id%2Ccf_standard_name%2Cdata_node
-&format=application%2Fsolr%2Bjson
-
-
-ACTIVITY_ID=CMIP,ScenarioMIP:;
-EXPERIMENT_ID="historical,ssp585"
-TABLE_ID="Amon,fx"
-VARIABLE_ID="sftlf,pr,tas"
-FREQUENCY="fx,mon"
-
-
-BASE_URL='https://esgf-data.dkrz.de/esg-search/search?format=application%2Fsolr%2Bjson&latest=true&replica=false'
-
-QUERY="project=CMIP6&activity_id=CMIP,ScenarioMIP&experiment_id=historical,ssp585&table_id=Amon,fx&frequency=fx,mon&variable_id=sftlf,pr,tas"
-
-FIELDS="fields=master_id,size,number_of_files,variable_id,experiment_id,variant_label,source_id,institution_id,experiment_id"
-FACETS="facets=activity_id,source_id,institution_id,source_type,nominal_resolution,experiment_id,variant_label,grid_label,table_id,frequency,realm,variable_id"
-
-
-curl -s "${BASE_URL}&${QUERY}&${FACETS}&${FIELDS}&limit=1000"
-
-####
-keys_unsorted as $headers | [flatten] | map(. as $row | $headers | with_entries({ "key": .value,"value": $row[.key]}) )
-
--->
+Report ESGF facet counts for local installed files

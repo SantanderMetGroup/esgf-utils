@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# 1 - Some 'instance_id' do not end with the file 
+# (ex. CMIP6.ScenarioMIP.NIMS-KMA.KACE-1-0-G.ssp585.r3i1p1f1.Amon.tasmin.gr.v20200316)
+# so we ignore these files with map(select(.group|endswith(".nc")))
+# Note that this will make some files disappear from the aria file, I need
+# to decide how to tackle this, best option is to both report to ESGF and
+# manually detect these files from .json and create the aria file ad-hoc
+
+# 2 - Some 'instance_id' end with extension .nc_0
+# so we change it to .nc with
+# group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) })
+
+jq --slurp -r '
+    map({    url: .url[0]|split("|")[0],
+            size,
+            instance_id,
+            replica,
+            checksum: .checksum|first,
+            checksum_type: .checksum_type|first|ascii_downcase|sub("sha";"sha-"),
+            group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) }) |
+    map(select(.group|endswith(".nc"))) |
+    group_by(.group) |
+    map(reduce .[] as $i ({urls: []}; {urls: [.urls[],$i.url]} + $i)) |
+    map((.urls|unique|join("\t")),
+        "  checksum="+(.checksum_type|tostring)+"="+(.checksum|tostring),
+        "  out="+.group, "")[]'
