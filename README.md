@@ -63,3 +63,9 @@ esgf-download-ceda -d /oceano/gmeteo/DATA/ESGF/REPLICA/DATA -g .globus/ metalink
 ## esgf-facets-report
 
 Report ESGF facet counts for local installed files
+
+## List dimensions from ncdump -h
+
+```
+ncudmp -h $FILE | awk '/netcdf /{printf("%s,", $2); next} $0=="dimensions:"{d=1;next;} $0=="variables:"{print ""; exit} d{printf("%s,", $1);}'
+```
