@@ -7,10 +7,10 @@
 # to decide how to tackle this, best option is to both report to ESGF and
 # manually detect these files from .json and create the aria file ad-hoc
 
-# 2 - Some 'instance_id' end with extension .nc_0
-# so we change it to .nc with
-# group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) })
+# Some 'instance_id' include |DATA_NODE, so i remove it with sub("\\|.*"; "")
+# Some 'instance_id' end with extension .nc_0 so we change it to .nc with sub("\\.nc_[0-9]+";".nc")
 
+<<<<<<< HEAD
 jq '
 {
     url: .url[0]|split("|")[0],
@@ -19,7 +19,7 @@ jq '
     replica,
     checksum: .checksum|first,
     checksum_type: .checksum_type|first|ascii_downcase|sub("sha";"sha-"),
-    group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/"))
+    group: (.instance_id|sub("\\|.*"; "")|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) }) |
 } | select(.group|endswith(".nc"))' | jq --slurp -r '
     group_by(.group) |
     map(reduce .[] as $i ({urls: []}; {urls: [.urls[],$i.url]} + $i)) |
