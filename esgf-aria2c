@@ -11,15 +11,16 @@
 # so we change it to .nc with
 # group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) })
 
-jq --slurp -r '
-    map({    url: .url[0]|split("|")[0],
-            size,
-            instance_id,
-            replica,
-            checksum: .checksum|first,
-            checksum_type: .checksum_type|first|ascii_downcase|sub("sha";"sha-"),
-            group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/")) }) |
-    map(select(.group|endswith(".nc"))) |
+jq '
+{
+    url: .url[0]|split("|")[0],
+    size,
+    instance_id,
+    replica,
+    checksum: .checksum|first,
+    checksum_type: .checksum_type|first|ascii_downcase|sub("sha";"sha-"),
+    group: (.instance_id|sub("\\.nc_[0-9]+";".nc")|gsub("\\.(?!nc$)";"/"))
+} | select(.group|endswith(".nc"))' | jq --slurp -r '
     group_by(.group) |
     map(reduce .[] as $i ({urls: []}; {urls: [.urls[],$i.url]} + $i)) |
     map((.urls|unique|join("\t")),
