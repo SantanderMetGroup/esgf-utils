@@ -2,6 +2,20 @@
 
 Tools for dealing with ESGF.
 
+Add this to you bashrc:
+
+```
+esgf-aria2c-download() {
+    aria2c --private-key=CERTIFICATE \
+           --certificate=CERTIFICATE \
+           --ca-certificate=CERTIFICATE \
+           --check-certificate=false \
+           --log-level=info --summary-interval=0 --console-log-level=warn \
+           --allow-overwrite=true --continue --file-allocation=none --remote-time=true \
+           --auto-file-renaming=false --conditional-get=true --check-integrity=true $@
+}
+```
+
 ## esgf-search
 
 Query ESGF using either facet parameters or selection files. `esgf-search` requires `jq` and `curl`
