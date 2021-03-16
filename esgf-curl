@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 # CEDA does not support range requests and aria2c requires them, so this
 # script uses curl to download the files that were not downloaded by aria
 
