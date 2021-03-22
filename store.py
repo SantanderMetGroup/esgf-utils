@@ -2,8 +2,6 @@ import sys, os
 import json
 import tables
 
-from config import projects
-
 def parse_args(argv):
     args = {
         'col_size': 1000,
